@@ -7,7 +7,7 @@ from tempfile import TemporaryDirectory
 
 import typer
 
-from markdowner import audio, cleaner, emit, ingest, transcribe
+from markdowner import audio, cleaner, emit, ingest, log, transcribe
 
 app = typer.Typer(
     help="URL / audio / video → structured .md for LLM Wiki",
@@ -49,16 +49,40 @@ def run(
     clean: bool = typer.Option(False, "--clean", help="Run LLM cleanup (opt-in, needs `llm` CLI)"),
     model: Path = typer.Option(_DEFAULT_MODEL, "--model", help="Whisper model .bin"),
     llm_model: str = typer.Option(_DEFAULT_LLM, "--llm-model", help="Model for --clean via simonw/llm"),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress progress output"),
 ) -> None:
     """Transcribe a URL or local media file into a markdown note."""
+    log.set_quiet(quiet)
+
     with TemporaryDirectory(prefix="markdowner-") as tmp_str:
         tmp = Path(tmp_str)
-        ingested = ingest.ingest(link, tmp)
-        wav = audio.to_whisper_wav(ingested.audio_path, tmp / "whisper-input.wav")
-        transcript = transcribe.transcribe(wav, model)
+
+        with log.stage(f"ingesting [bold]{link}[/bold]") as s:
+            ingested = ingest.ingest(link, tmp)
+            bits = []
+            if ingested.title:
+                bits.append(f'"{ingested.title}"')
+            if ingested.duration_sec:
+                bits.append(f"{ingested.duration_sec:.0f}s")
+            if ingested.uploader:
+                bits.append(f"by {ingested.uploader}")
+            s.detail = ", ".join(bits) or None
+
+        with log.stage("transcoding to 16kHz mono WAV") as s:
+            wav = audio.to_whisper_wav(ingested.audio_path, tmp / "whisper-input.wav")
+            s.detail = f"{wav.stat().st_size // 1024} KiB"
+
+        with log.stage(f"transcribing with [bold]{model.stem}[/bold]") as s:
+            transcript = transcribe.transcribe(wav, model)
+            s.detail = f"{len(transcript.segments)} segments, lang={transcript.language}"
+
         if clean:
-            transcript = cleaner.clean(transcript, model=llm_model)
-        content = emit.render(ingested, transcript)
+            with log.stage(f"cleaning with [bold]{llm_model}[/bold]"):
+                transcript = cleaner.clean(transcript, model=llm_model)
+
+        with log.stage("rendering markdown") as s:
+            content = emit.render(ingested, transcript)
+            s.detail = f"{len(content)} chars"
 
     out_path = resolve_out(path, ingested.suggested_stem)
     if out_path is None:
@@ -66,7 +90,7 @@ def run(
     else:
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(content, encoding="utf-8")
-        typer.echo(f"wrote {out_path}", err=True)
+        log.info(f"[green]wrote[/green] {out_path}")
 
 
 if __name__ == "__main__":
