@@ -48,15 +48,24 @@ def ingest_url(url: str, workdir: Path) -> IngestResult:
 
     ydl_opts = {
         "format": "bestaudio/best",
-        "outtmpl": str(workdir / "%(id)s.%(ext)s"),
+        "paths": {"home": str(workdir)},
+        "outtmpl": {"default": "%(id)s.%(ext)s"},
         "quiet": True,
         "no_warnings": True,
         "noprogress": True,
         "nopart": True,
+        "windowsfilenames": False,
+        "restrictfilenames": False,
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
         audio_path = Path(ydl.prepare_filename(info))
+        if not audio_path.is_absolute():
+            audio_path = workdir / audio_path.name
+        if not audio_path.exists():
+            matches = list(workdir.glob(f"{info['id']}.*"))
+            if matches:
+                audio_path = matches[0]
 
     title = info.get("title")
     return IngestResult(

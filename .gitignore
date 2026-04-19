@@ -19,3 +19,23 @@ uv.lock
 .DS_Store
 .env
 .env.local
+
+# Media leftovers (should stay in TemporaryDirectory, but belt-and-suspenders)
+*.opus
+*.mp3
+*.m4a
+*.webm
+*.wav
+*.mp4
+*.mkv
+*.aac
+*.flac
+*.ogg
+*.oga
+*.part
+*.ytdl
+
+# Generated markdown output (when user runs `markdowner URL .` inside the repo)
+/*.md
+!/README.md
+!/CLAUDE.md
