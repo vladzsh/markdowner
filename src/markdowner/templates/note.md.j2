@@ -1,14 +1,23 @@
 ---
-source: {{ fm.source or "local" }}
-type: {{ fm.type }}
-{% if fm.duration_sec is not none %}duration_sec: {{ "%.1f"|format(fm.duration_sec) }}
-{% endif %}model: {{ fm.model }}
-created: {{ fm.created.isoformat() }}
-{% if fm.title %}title: "{{ fm.title }}"
-{% endif %}---
+{% if title %}title: "{{ title|replace('"', '\\"') }}"
+{% endif %}
+{% if source %}source: {{ source }}
+{% endif %}
+{% if uploader %}uploader: "{{ uploader|replace('"', '\\"') }}"
+{% endif %}
+{% if upload_date %}upload_date: {{ upload_date }}
+{% endif %}
+{% if duration_sec is not none %}duration_sec: {{ "%.1f"|format(duration_sec) }}
+{% endif %}
+{% if language %}language: {{ language }}
+{% endif %}
+model: {{ model }}
+created: {{ created }}
+---
 
-# {{ fm.title or "Transcript" }}
+{% if title %}# {{ title }}
 
+{% endif %}
 {% for seg in segments %}
 {{ seg.text }}
 {% endfor %}
