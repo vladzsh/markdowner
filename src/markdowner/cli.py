@@ -41,9 +41,14 @@ def resolve_out(path: Path | None, stem: str, cwd: Path | None = None) -> Path |
 
 @app.command()
 def run(
-    link: str = typer.Argument(..., help="URL or path to local audio/video file"),
+    source: str = typer.Argument(
+        ...,
+        metavar="<link|file>",
+        help="URL (any yt-dlp-supported site) or path to a local audio/video file",
+    ),
     path: Path | None = typer.Argument(
         None,
+        metavar="[path]",
         help="Output: omit for stdout; '.' → <slug>.md in cwd; file → write there; dir → <dir>/<slug>.md",
     ),
     clean: bool = typer.Option(False, "--clean", help="Run LLM cleanup (opt-in, needs `llm` CLI)"),
@@ -57,8 +62,12 @@ def run(
     with TemporaryDirectory(prefix="markdowner-") as tmp_str:
         tmp = Path(tmp_str)
 
-        with log.stage(f"ingesting [bold]{link}[/bold]") as s:
-            ingested = ingest.ingest(link, tmp)
+        kind = "URL" if ingest.is_url(source) else "file"
+        with log.stage(f"ingesting {kind} [bold]{source}[/bold]") as s:
+            try:
+                ingested = ingest.ingest(source, tmp)
+            except FileNotFoundError as e:
+                raise typer.BadParameter(f"local file does not exist: {e}") from e
             bits = []
             if ingested.title:
                 bits.append(f'"{ingested.title}"')

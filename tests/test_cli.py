@@ -1,6 +1,10 @@
 from pathlib import Path
 
-from markdowner.cli import resolve_out
+from typer.testing import CliRunner
+
+from markdowner.cli import app, resolve_out
+
+runner = CliRunner()
 
 
 def test_resolve_out_none_is_stdout() -> None:
@@ -27,3 +31,18 @@ def test_resolve_out_nonexistent_path_treated_as_file(tmp_path: Path) -> None:
     target = tmp_path / "future" / "note.md"
     result = resolve_out(target, "ignored")
     assert result == target
+
+
+def test_cli_help_shows_link_or_file_metavar() -> None:
+    result = runner.invoke(app, ["--help"])
+    assert result.exit_code == 0
+    assert "<link|file>" in result.stdout
+    assert "[path]" in result.stdout
+
+
+def test_cli_missing_file_gives_clean_error(tmp_path: Path) -> None:
+    missing = tmp_path / "does-not-exist.mp3"
+    result = runner.invoke(app, [str(missing)])
+    assert result.exit_code != 0
+    combined = (result.stdout or "") + (result.stderr or "")
+    assert "local file does not exist" in combined or "does-not-exist" in combined
