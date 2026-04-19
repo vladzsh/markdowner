@@ -1,0 +1,14 @@
+---
+source: {{ fm.source or "local" }}
+type: {{ fm.type }}
+{% if fm.duration_sec is not none %}duration_sec: {{ "%.1f"|format(fm.duration_sec) }}
+{% endif %}model: {{ fm.model }}
+created: {{ fm.created.isoformat() }}
+{% if fm.title %}title: "{{ fm.title }}"
+{% endif %}---
+
+# {{ fm.title or "Transcript" }}
+
+{% for seg in segments %}
+{{ seg.text }}
+{% endfor %}
