@@ -41,18 +41,20 @@ def parse_whisper_json(data: dict) -> TranscriptionResult:
     return TranscriptionResult(segments=segments, language=lang, model=model)
 
 
-def transcribe(wav_path: Path, model_path: Path) -> TranscriptionResult:
-    """Run whisper-cli with JSON output, parse segments + language."""
-    subprocess.run(
-        [
-            "whisper-cli",
-            "-m", str(model_path),
-            "-f", str(wav_path),
-            "-oj",
-        ],
-        check=True,
-        capture_output=True,
-    )
+def transcribe(
+    wav_path: Path,
+    model_path: Path,
+    language: str = "auto",
+) -> TranscriptionResult:
+    """Run whisper-cli with JSON output. language='auto' → detect; else force (e.g. 'uk', 'en')."""
+    cmd = [
+        "whisper-cli",
+        "-m", str(model_path),
+        "-f", str(wav_path),
+        "-oj",
+        "-l", language,
+    ]
+    subprocess.run(cmd, check=True, capture_output=True)
     json_path = wav_path.with_suffix(wav_path.suffix + ".json")
     data = json.loads(json_path.read_text(encoding="utf-8"))
     result = parse_whisper_json(data)

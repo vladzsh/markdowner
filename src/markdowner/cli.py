@@ -53,6 +53,10 @@ def run(
     ),
     clean: bool = typer.Option(False, "--clean", help="Run LLM cleanup (opt-in, needs `llm` CLI)"),
     model: Path = typer.Option(_DEFAULT_MODEL, "--model", help="Whisper model .bin"),
+    language: str = typer.Option(
+        "auto", "--language", "-l",
+        help="Spoken language (ISO-639-1). 'auto' = detect, or force: uk, en, de, ...",
+    ),
     llm_model: str = typer.Option(_DEFAULT_LLM, "--llm-model", help="Model for --clean via simonw/llm"),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress progress output"),
 ) -> None:
@@ -81,8 +85,9 @@ def run(
             wav = audio.to_whisper_wav(ingested.audio_path, tmp / "whisper-input.wav")
             s.detail = f"{wav.stat().st_size // 1024} KiB"
 
-        with log.stage(f"transcribing with [bold]{model.stem}[/bold]") as s:
-            transcript = transcribe.transcribe(wav, model)
+        lang_msg = "auto-detect" if language == "auto" else f"lang={language}"
+        with log.stage(f"transcribing with [bold]{model.stem}[/bold] ({lang_msg})") as s:
+            transcript = transcribe.transcribe(wav, model, language=language)
             s.detail = f"{len(transcript.segments)} segments, lang={transcript.language}"
 
         if clean:
